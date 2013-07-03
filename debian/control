@@ -9,7 +9,7 @@ Build-Depends: debhelper (>= 7.0.50~),
  libnet1-dev,
  libpcap-dev,
  libgsl0-dev,
-Build-Conflicts: libssl-dev
+ libssl-dev
 Standards-Version: 3.8.4
 Homepage: http://sourceforge.net/projects/sipp/
 Vcs-Svn: svn://svn.debian.org/pkg-voip/sip-tester/trunk/
