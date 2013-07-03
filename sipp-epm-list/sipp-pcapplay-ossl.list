@@ -1,0 +1,42 @@
+#
+# Product specification file for Sipp
+#
+
+%product sipp pcapplay ossl
+%description test tool / traffic generator for the SIP protocol
+%copyright (c)Copyright 2007 Hewlett-Packard Development Company, LP.
+%license LICENSE.txt
+%readme README.txt
+%version tool-version
+%vendor HP
+%packager HP OpenCall Software
+
+
+%system tool-system
+%requires pcap
+%requires gsl
+%requires openssl
+%incompat sipp-standard
+%format tool-format
+
+
+# binary file
+
+f 555 root bin /usr/local/bin/sipp sipp
+ 
+# pcap files
+
+d 555 root bin /usr/local/share/sipp
+d 555 root bin /usr/local/share/sipp/pcap 
+f 555 root bin /usr/local/share/sipp/pcap/dtmf_2833_1.pcap pcap/dtmf_2833_1.pcap nostrip()
+f 555 root bin /usr/local/share/sipp/pcap/dtmf_2833_2.pcap pcap/dtmf_2833_2.pcap nostrip()
+f 555 root bin /usr/local/share/sipp/pcap/dtmf_2833_3.pcap pcap/dtmf_2833_3.pcap nostrip()
+f 555 root bin /usr/local/share/sipp/pcap/dtmf_2833_4.pcap pcap/dtmf_2833_4.pcap nostrip()
+f 555 root bin /usr/local/share/sipp/pcap/dtmf_2833_5.pcap pcap/dtmf_2833_5.pcap nostrip()
+f 555 root bin /usr/local/share/sipp/pcap/dtmf_2833_6.pcap pcap/dtmf_2833_6.pcap nostrip()
+f 555 root bin /usr/local/share/sipp/pcap/dtmf_2833_7.pcap pcap/dtmf_2833_7.pcap nostrip()
+f 555 root bin /usr/local/share/sipp/pcap/dtmf_2833_8.pcap pcap/dtmf_2833_8.pcap nostrip()
+f 555 root bin /usr/local/share/sipp/pcap/dtmf_2833_9.pcap pcap/dtmf_2833_9.pcap nostrip()
+f 555 root bin /usr/local/share/sipp/pcap/dtmf_2833_pound.pcap pcap/dtmf_2833_pound.pcap nostrip()
+f 555 root bin /usr/local/share/sipp/pcap/dtmf_2833_star.pcap pcap/dtmf_2833_star.pcap nostrip()
+f 555 root bin /usr/local/share/sipp/pcap/g711a.pcap pcap/g711a.pcap nostrip()

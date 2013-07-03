@@ -1,0 +1,20 @@
+#
+# Product specification file for Sipp
+#
+
+%product sipp
+%description test tool / traffic generator for the SIP protocol
+%copyright (c)Copyright 2006 Hewlett-Packard Development Company, LP.
+%license ../LICENSE.txt
+%readme ../README.txt
+%version tool-version
+%vendor HP
+%packager HP OpenCall Software
+
+%system tool-system
+%incompat sipp-pcapplay-ossl
+%format tool-format
+
+f 555 root bin /usr/local/bin/sipp sipp
+
+
