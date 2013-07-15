@@ -1,0 +1,164 @@
+From upstream:
+ - r48b81a8bd29f: Add -noninteractive option for non-interactive use of SIPp.
+    Quiets down the output and fixes so you can start it without a console
+    (without it, you get Error opening terminal: unknown).
+ - ra92547c17ef1: Force call hangup with -timeout_error, hopefully fixing
+    that sipp fails to quit every now and then.
+ - r82500326d3f8: Fix so -trace_err works with -noninteractive.
+--- a/screen.cpp
++++ b/screen.cpp
+@@ -49,7 +49,7 @@
+ extern void   stop_all_traces();
+ extern bool   backgroundMode;
+ 
+-void (*screen_exit_handler)();
++void (*screen_exit_handler)() = NULL;
+ 
+ /* Clock must be a pointer to struct timeval */
+ #define GET_TIME(clock)       \
+@@ -69,6 +69,7 @@
+   return c;
+ }
+ 
++/* This is also called if !screen_inited (when running non-interactively) */
+ void screen_exit(int rc)
+ {
+   unsigned long counter_value_failed=0;
+@@ -85,14 +86,15 @@
+     already_exited = 1;
+   }
+   
+-  if( backgroundMode == false ) 
+-  endwin();
++  if (screen_inited && backgroundMode == false) {
++    endwin();
++  }
+   
+   if(screen_exit_handler) {
+     screen_exit_handler();
+   }
+ 
+-  if(screen_errors) {
++  if (screen_inited && screen_errors) {
+     fprintf(stderr, "%s", screen_last_error);
+     if(screen_errors > 1) {
+       if (screen_logfile[0] != (char)0) {
+@@ -231,7 +233,7 @@
+   c+= sprintf(c, ".\n");
+   screen_errors++;
+ 
+-  if(screen_inited && !error_lfi.fptr && print_all_responses) {
++  if(!error_lfi.fptr && print_all_responses) {
+     rotate_errorf();
+     if(!error_lfi.fptr) {
+       c += sprintf(c, "%s: Unable to create '%s': %s.\n",
+--- a/sipp.cpp
++++ b/sipp.cpp
+@@ -221,6 +221,7 @@
+ 		SIPP_OPTION_UNSETFLAG, &default_behaviors, 1},
+ 	{"nr", "Disable retransmission in UDP mode.", SIPP_OPTION_UNSETFLAG, &retrans_enabled, 1},
+ 
++	{"noninteractive", "Disable curses and minimize output (implies -nostdin, see also -m, -nd, -timeout. -timeout_error).\n", SIPP_OPTION_SETFLAG, &noninteractive, 1},
+ 	{"nostdin", "Disable stdin.\n", SIPP_OPTION_SETFLAG, &nostdin, 1},
+ 
+ 	{"p", "Set the local port number.  Default is a random free port chosen by the system.", SIPP_OPTION_INT, &user_port, 1},
+@@ -1422,7 +1423,7 @@
+ {
+   static int first = 1;
+ 
+-  if(backgroundMode == false && display_scenario) {
++  if (backgroundMode == false && noninteractive == false && display_scenario) {
+     if(!last) {
+       screen_clear();
+     }
+@@ -3288,8 +3289,9 @@
+ void timeout_alarm(int param){
+   if (timeout_error) {
+     ERROR("%s timed out after '%.3lf' seconds", scenario_file, ((double)clock_tick / 1000LL));
++    quitting += 20; /* don't wait for open calls */
+   }
+-  quitting = 1;
++  quitting += 1;
+   timeout_exit = true;
+ }
+ 
+@@ -4543,7 +4545,9 @@
+ 	  struct addrinfo   hints;
+ 	  struct addrinfo * local_addr;
+ 
+-	  printf("Resolving remote sending address %s...\n", remote_s_address);
++	  if (noninteractive == false) {
++	    printf("Resolving remote sending address %s...\n", remote_s_address);
++	  }
+ 
+ 	  memset((char*)&hints, 0, sizeof(hints));
+ 	  hints.ai_flags  = AI_PASSIVE;
+@@ -4726,7 +4730,12 @@
+     sprintf(scenario_file, "%s", "sipp");
+   }
+ 
+-   screen_init(print_last_stats);
++  /* If interactive, initialize (curses) screen, else disable stdin */
++  if (noninteractive == false) {
++    screen_init(print_last_stats);
++  } else {
++    nostdin = true;
++  }
+ 
+ #ifdef _USE_OPENSSL
+     if ((transport == T_TLS) && (FI_init_ssl_context() != SSL_INIT_NORMAL))
+@@ -5135,7 +5144,10 @@
+       struct addrinfo   hints;
+       struct addrinfo * local_addr;
+ 
+-      fprintf(stderr,"Resolving remote host '%s'... ", remote_host);
++      if (noninteractive == false) {
++        printf("Resolving remote host '%s'... ", remote_host);
++        fflush(stdout);
++      }
+ 
+       memset((char*)&hints, 0, sizeof(hints));
+       hints.ai_flags  = AI_PASSIVE;
+@@ -5168,7 +5180,9 @@
+           htons((short)remote_port);
+         sprintf(remote_ip_escaped, "[%s]", remote_ip); 
+       }
+-      fprintf(stderr,"Done.\n");
++      if (noninteractive == false) {
++        printf("Done.\n");
++      }
+     }
+    }
+ 
+@@ -5471,7 +5485,9 @@
+ void connect_to_peer(char *peer_host, int peer_port, struct sockaddr_storage *peer_sockaddr, char *peer_ip, struct sipp_socket **peer_socket) {
+ 
+           /* Resolving the  peer IP */
+-      printf("Resolving peer address : %s...\n",peer_host);
++      if (noninteractive == false) {
++        printf("Resolving peer address : %s...\n",peer_host);
++      }
+       struct addrinfo   hints;
+       struct addrinfo * local_addr;
+       memset((char*)&hints, 0, sizeof(hints));
+@@ -5573,7 +5589,9 @@
+ void connect_local_twin_socket(char * twinSippHost)
+ {
+           /* Resolving the listener IP */
+-            printf("Resolving listener address : %s...\n", twinSippHost);
++            if (noninteractive == false) {
++              printf("Resolving listener address : %s...\n", twinSippHost);
++            }
+             struct addrinfo   hints;
+             struct addrinfo * local_addr;
+             memset((char*)&hints, 0, sizeof(hints));
+--- a/sipp.hpp
++++ b/sipp.hpp
+@@ -270,6 +270,7 @@
+ extern bool               twinSippMode            _DEFVAL(false);
+ extern bool               extendedTwinSippMode    _DEFVAL(false);
+ 
++extern bool               noninteractive          _DEFVAL(false);
+ extern bool               nostdin                 _DEFVAL(false);        
+ extern bool               backgroundMode          _DEFVAL(false);        
+ extern bool               signalDump              _DEFVAL(false);        
