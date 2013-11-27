@@ -133,17 +133,28 @@ uint32_t get_remote_ip_media(char *msg)
     char pattern[] = "c=IN IP4 ";
     char *begin, *end;
     char ip[32];
-    begin = strstr(msg, pattern);
+    char *my_msg = strdup(msg);
+
+    if (!my_msg) {
+        return INADDR_NONE;
+    }
+    begin = strstr(my_msg, pattern);
     if (!begin) {
+      free(my_msg);
       /* Can't find what we're looking at -> return no address */
       return INADDR_NONE;
     }
     begin += sizeof("c=IN IP4 ") - 1;
     end = strstr(begin, "\r\n");
-    if (!end)
+    if (!end) {
+      free(my_msg);
       return INADDR_NONE;
+    }
+    *end = '\0';
     memset(ip, 0, 32);
-    strncpy(ip, begin, end - begin);
+    strncpy(ip, begin, sizeof(ip) - 1);
+    ip[sizeof(ip) - 1] = '\0';
+    free(my_msg);
     return inet_addr(ip);
 }
 
@@ -156,20 +167,30 @@ uint8_t get_remote_ipv6_media(char *msg, struct in6_addr *addr)
     char pattern[] = "c=IN IP6 ";
     char *begin, *end;
     char ip[128];
+    char *my_msg = strdup(msg);
 
     memset(addr, 0, sizeof(*addr));
     memset(ip, 0, 128);
 
-    begin = strstr(msg, pattern);
+    if (!my_msg) {
+        return 0;
+    }
+    begin = strstr(my_msg,pattern);
     if (!begin) {
+      free(my_msg);
       /* Can't find what we're looking at -> return no address */
       return 0;
     }
     begin += sizeof("c=IN IP6 ") - 1;
     end = strstr(begin, "\r\n");
-    if (!end)
+    if (!end) {
+      free(my_msg);
       return 0;
-    strncpy(ip, begin, end - begin);
+    }
+    *end = '\0';
+    strncpy(ip, begin, sizeof(ip) -1);
+    ip[sizeof(ip) - 1] = '\0';
+    free(my_msg);
     if (!inet_pton(AF_INET6, ip, addr)) {
       return 0;
     }
@@ -196,17 +217,27 @@ uint16_t get_remote_port_media(char *msg, int pattype)
 	ERROR("Internal error: Undefined media pattern %d\n", 3);
     }
 
-    begin = strstr(msg, pattern);
+    char *my_msg = strdup(msg);
+    if (!my_msg) {
+        return 0;
+    }
+    begin = strstr(my_msg, pattern);
     if (!begin) {
+      free(my_msg);
       /* m=audio not found */
       return 0;
     }
     begin += strlen(pattern) - 1;
     end = strstr(begin, "\r\n");
-    if (!end)
+    if (!end) {
+      free(my_msg);
       ERROR("get_remote_port_media: no CRLF found");
+    }
+    *end = '\0';
     memset(number, 0, sizeof(number));
     strncpy(number, begin, sizeof(number) - 1);
+    number[sizeof(number) - 1] = '\0';
+    free(my_msg);
     return atoi(number);
 }
 
@@ -403,10 +434,10 @@ void call::init(scenario * call_scenario, struct sipp_socket *socket, struct soc
   use_ipv6 = ipv6;
   queued_msg = NULL;
   
-#ifdef _USE_OPENSSL
   dialog_authentication = NULL;
   dialog_challenge_type = 0;
 
+#ifdef _USE_OPENSSL
   m_ctx_ssl = NULL ;
   m_bio = NULL ;
 #endif
@@ -614,11 +645,9 @@ call::~call()
   }
 
 
-#ifdef _USE_OPENSSL
   if(dialog_authentication) {
        free(dialog_authentication);
   }
-#endif
 
   if (use_tdmmap) {
     tdm_map[tdm_map_number] = false;
@@ -758,11 +787,11 @@ bool call::connect_socket_if_needed()
     if (sipp_bind_socket(call_socket, &saddr, &call_port)) {
       ERROR_NO("Unable to bind UDP socket");
     }
-  } else { /* TCP or TLS. */
+  } else { /* TCP, SCTP or TLS. */
     struct sockaddr_storage *L_dest = &remote_sockaddr;
 
     if ((associate_socket(new_sipp_call_socket(use_ipv6, transport, &existing))) == NULL) {
-      ERROR_NO("Unable to get a TCP socket");
+      ERROR_NO("Unable to get a TCP/SCTP/TLS socket");
     }
 
     if (existing) {
@@ -779,9 +808,9 @@ bool call::connect_socket_if_needed()
       if (reconnect_allowed()) {
         if(errno == EINVAL){
           /* This occurs sometime on HPUX but is not a true INVAL */
-          WARNING("Unable to connect a TCP socket, remote peer error");
+          WARNING("Unable to connect a TCP/SCTP/TLS socket, remote peer error");
         } else {
-          WARNING("Unable to connect a TCP socket");
+          WARNING("Unable to connect a TCP/SCTP/TLS socket");
         }
 	/* This connection failed.  We must be in multisocket mode, because
          * otherwise we would already have a call_socket.  This call can not
@@ -799,9 +828,9 @@ bool call::connect_socket_if_needed()
       } else {
 	if(errno == EINVAL){
 	  /* This occurs sometime on HPUX but is not a true INVAL */
-	  ERROR("Unable to connect a TCP socket, remote peer error");
+	  ERROR("Unable to connect a TCP/SCTP/TLS socket, remote peer error");
 	} else {
-	  ERROR_NO("Unable to connect a TCP socket");
+	  ERROR_NO("Unable to connect a TCP/SCTP/TLS socket");
 	}
       }
     }
@@ -1208,6 +1237,8 @@ char * call::send_scene(int index, int *send_status, int *len)
   char *L_ptr1 ;
   char *L_ptr2 ;
   int uselen = 0;
+  int tmplen;
+  char *hdrbdry;
 
   assert(send_status);
 
@@ -1247,6 +1278,16 @@ char * call::send_scene(int index, int *send_status, int *len)
   if (strcmp(msg_name,"ACK") == 0) {
     call_established = true ;
     ack_is_pending = false ;
+  }
+
+  /* Fix: Remove extra "\r\n" if message body ends with "\r\n\r\n" */
+  tmplen = (*len) - 1;
+  if ((dest[tmplen] == dest[tmplen-2] && dest[tmplen] == '\n')
+      && (dest[tmplen-1] == dest[tmplen-3] && dest[tmplen-1] == '\r'))  {
+    hdrbdry = strstr(dest, "\r\n\r\n");
+    if (NULL != hdrbdry &&  hdrbdry != dest+(tmplen-3))  {
+        *len = (*len) - 2;
+    }
   }
 
   *send_status = send_raw(dest, index, *len);
@@ -2405,6 +2446,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
   if (length_marker || auth_marker) {
     body = strstr(msg_buffer, "\r\n\r\n");
     if (body) {
+	auth_body = body;    
 	auth_body += strlen("\r\n\r\n");
     }
   }
@@ -2435,9 +2477,6 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
    * been keyword substituted) to build the md5 hash
    */
   if (auth_marker) {
-#ifndef _USE_OPENSSL
-    ERROR("Authentication requires OpenSSL!");
-#else
     if (!dialog_authentication) {
       ERROR("Authentication keyword without dialog_authentication!");
     }
@@ -2501,7 +2540,6 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
     if (msgLen) {
 	*msgLen += (authlen -  auth_marker_len);
     }
-#endif
   }
 
   if (auth_comp_allocated) {
@@ -3281,7 +3319,6 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
       // WARNING("next_req_url is [%s]", next_req_url);
   }
 
-#ifdef _USE_OPENSSL
   /* store the authentication info */
   if ((call_scenario->messages[search_index] -> bShouldAuthenticate) &&
           (reply_code == 401 || reply_code == 407)) {
@@ -3303,7 +3340,6 @@ bool call::process_incoming(char * msg, struct sockaddr_storage *src)
       /* Store the code of the challenge for building the proper header */
       dialog_challenge_type = reply_code;
   }
-#endif
 
   /* If we are not advancing state, we should quite before we change this stuff. */
   if (!call_scenario->messages[search_index]->advance_state) {
@@ -3530,14 +3566,23 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 	protocol = T_TCP;
       } else if (!strcmp(str_protocol, "tls") || !strcmp(str_protocol, "TLS")) {
 	protocol = T_TLS;
+      } else if (!strcmp(str_protocol, "sctp") || !strcmp(str_protocol, "SCTP")) {
+	protocol = T_SCTP;
       } else {
 	ERROR("Unknown transport for setdest: '%s'", str_protocol);
       }
 
-      if (!call_socket && protocol == T_TCP && transport == T_TCP) {
+      if (!call_socket && ((protocol == T_TCP && transport == T_TCP) ||
+                           (protocol == T_SCTP && transport == T_SCTP))) {
 	bool existing;
 	if ((associate_socket(new_sipp_call_socket(use_ipv6, transport, &existing))) == NULL) {
-	  ERROR_NO("Unable to get a TCP socket");
+      switch (protocol) {
+        case T_SCTP:
+	      ERROR_NO("Unable to get a SCTP socket");
+          break;
+        default:
+	      ERROR_NO("Unable to get a TCP socket");
+      }
 	}
 
 	if (!existing) {
@@ -3554,12 +3599,12 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 	/* Nothing to do. */
       } else if (protocol == T_TLS) {
 	ERROR("Changing destinations is not supported for TLS.");
-      } else if (protocol == T_TCP) {
+      } else if (protocol == T_TCP || protocol == T_SCTP) {
 	if (!multisocket) {
-	  ERROR("Changing destinations for TCP requires multisocket mode.");
+	  ERROR("Changing destinations for TCP or SCTP requires multisocket mode.");
 	}
 	if (call_socket->ss_count > 1) {
-	  ERROR("Can not change destinations for a TCP socket that has more than one user.");
+	  ERROR("Can not change destinations for a TCP/SCTP socket that has more than one user.");
 	}
       }
 
@@ -3588,7 +3633,7 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       free(str_port);
       free(str_protocol);
 
-      if (protocol == T_TCP) {
+      if (protocol == T_TCP || protocol == T_SCTP) {
 	close(call_socket->ss_fd);
 	call_socket->ss_fd = -1;
 	call_socket->ss_changed_dest = true;
@@ -3596,9 +3641,9 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 	  if (reconnect_allowed()) {
 	    if(errno == EINVAL){
 	      /* This occurs sometime on HPUX but is not a true INVAL */
-	      WARNING("Unable to connect a TCP socket, remote peer error");
+	      WARNING("Unable to connect a TCP/SCTP/TLS socket, remote peer error");
 	    } else {
-	      WARNING("Unable to connect a TCP socket");
+	      WARNING("Unable to connect a TCP/SCTP/TLS socket");
 	    }
 	    /* This connection failed.  We must be in multisocket mode, because
 	     * otherwise we would already have a call_socket.  This call can not
@@ -3612,14 +3657,13 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
 	  } else {
 	    if(errno == EINVAL){
 	      /* This occurs sometime on HPUX but is not a true INVAL */
-	      ERROR("Unable to connect a TCP socket, remote peer error");
+	      ERROR("Unable to connect a TCP/SCTP/TLS socket, remote peer error");
 	    } else {
-	      ERROR_NO("Unable to connect a TCP socket");
+	      ERROR_NO("Unable to connect a TCP/SCTP/TLS socket");
 	    }
 	  }
 	}
       }
-#ifdef _USE_OPENSSL
     } else if (currentAction->getActionType() == CAction::E_AT_VERIFY_AUTH) {
       bool result;
       char *lf;
@@ -3652,7 +3696,6 @@ call::T_ActionResult call::executeAction(char * msg, message *curmsg)
       }
 
       M_callVariableTable->getVar(currentAction->getVarId())->setBool(result);
-#endif
     } else if (currentAction->getActionType() == CAction::E_AT_JUMP) {
       double operand = get_rhs(currentAction);
       msg_index = (int)operand - 1;

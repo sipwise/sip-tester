@@ -61,7 +61,9 @@ unsigned int opentask::wake() {
     return 0;
   } else {
     /* We need to compute when the next call is going to be opened. */
-    return (unsigned long) (last_rate_change_time + ((calls_since_last_rate_change + 1) / (rate/rate_period_ms)));
+    return (unsigned long)
+        MAX(last_rate_change_time + (calls_since_last_rate_change /
+                MAX(rate/MAX(rate_period_ms, 1), 1)), 1);
   }
 }
 
@@ -116,7 +118,7 @@ bool opentask::run() {
 
       // adding a new OUTGOING CALL
       main_scenario->stats->computeStat(CStat::E_CREATE_OUTGOING_CALL);
-      call * call_ptr = call::add_call(userid, is_ipv6, use_remote_sending_addr ? &remote_sending_sockaddr : &remote_sockaddr);
+      call * call_ptr = call::add_call(userid, local_ip_is_ipv6, use_remote_sending_addr ? &remote_sending_sockaddr : &remote_sockaddr);
       if(!call_ptr) {
 	ERROR("Out of memory allocating call!");
       }
@@ -132,6 +134,7 @@ bool opentask::run() {
 	    main_socket->ss_count++;
 	    break;
 	  case T_TCP:
+	  case T_SCTP:
 	  case T_TLS:
 	    call_ptr->associate_socket(tcp_multiplex);
 	    tcp_multiplex->ss_count++;
