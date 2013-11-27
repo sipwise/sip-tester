@@ -46,9 +46,7 @@ message::message(int index, const char *desc)
   pause_desc = NULL;
   sessions = 0;
   bShouldRecordRoutes = 0;
-#ifdef _USE_OPENSSL
   bShouldAuthenticate = 0;
-#endif
 
   send_scheme = NULL;
   retrans_delay = 0;
@@ -144,6 +142,7 @@ message::~message()
 
 scenario      *main_scenario;
 scenario      *ooc_scenario;
+scenario      *aa_scenario;
 scenario      *display_scenario;
 
 /* This mode setting refers to whether we open calls autonomously (MODE_CLIENT)
@@ -851,7 +850,7 @@ scenario::scenario(char * filename, int deflt)
 	}
 
 	if ((ptr = xp_get_value("response_txn"))) {
-	  ERROR("response_txn can only be used for recieved messages.");
+	  ERROR("response_txn can only be used for received messages.");
 	}
 
 	curmsg -> retrans_delay = xp_get_long("retrans", "retransmission timer", 0);
@@ -872,7 +871,7 @@ scenario::scenario(char * filename, int deflt)
         if((ptr = xp_get_value((char *)"request"))) {
           curmsg -> recv_request = strdup(ptr);
 	  if ((ptr = xp_get_value("response_txn"))) {
-	    ERROR("response_txn can only be used for recieved responses.");
+	    ERROR("response_txn can only be used for received responses.");
 	  }
         }
 
@@ -900,13 +899,7 @@ scenario::scenario(char * filename, int deflt)
         /* record the authentication credentials  */
         if((ptr = xp_get_value((char *)"auth"))) {
 	  bool temp = get_bool(ptr, "message authentication");
-#ifdef _USE_OPENSSL
 	  curmsg -> bShouldAuthenticate = temp;
-#else
-	  if (temp) {
-	    ERROR("Authentication requires OpenSSL support!");
-	  }
-#endif
         }
       } else if(!strcmp(elem, "pause") || !strcmp(elem, "timewait")) {
 	checkOptionalRecv(elem, scenario_file_cursor);
@@ -1524,14 +1517,10 @@ void scenario::parseAction(CActions *actions) {
       }
       free(ptr);
     } else if(!strcmp(actionElem, "verifyauth")) {
-#ifdef _USE_OPENSSL
       tmpAction->setVarId(xp_get_var("assign_to", "verifyauth"));
       tmpAction->setMessage(xp_get_string("username", "verifyauth"), 0);
       tmpAction->setMessage(xp_get_string("password", "verifyauth"), 1);
       tmpAction->setActionType(CAction::E_AT_VERIFY_AUTH);
-#else
-      ERROR("The verifyauth action requires OpenSSL support.");
-#endif
     } else if(!strcmp(actionElem, "lookup")) {
       tmpAction->setVarId(xp_get_var("assign_to", "lookup"));
       tmpAction->setMessage(xp_get_string("file", "lookup"), 0);
@@ -1866,6 +1855,7 @@ char *scenario_table[] = {
 	"branchs",
 	"uac_pcap",
 	"ooc_default",
+	"ooc_dummy",
 };
 
 int find_scenario(const char *scenario) {
@@ -1917,7 +1907,7 @@ char * default_scenario [] = {
 "      INVITE sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag00[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>\n"
+"      To: [service] <sip:[service]@[remote_ip]:[remote_port]>\n"
 "      Call-ID: [call_id]\n"
 "      CSeq: 1 INVITE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
@@ -1961,7 +1951,7 @@ char * default_scenario [] = {
 "      ACK sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag00[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      To: [service] <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
 "      Call-ID: [call_id]\n"
 "      CSeq: 1 ACK\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
@@ -1983,7 +1973,7 @@ char * default_scenario [] = {
 "      BYE sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag00[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      To: [service] <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
 "      Call-ID: [call_id]\n"
 "      CSeq: 2 BYE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
@@ -2045,7 +2035,7 @@ char * default_scenario [] = {
 "  <!-- are also discarded.                                              -->\n"
 "  <!--                                                                  -->\n"
 "  <!-- If the specified header was present several times in the         -->\n"
-"  <!-- message, all occurences are concatenated (CRLF seperated)        -->\n"
+"  <!-- message, all occurences are concatenated (CRLF separated)        -->\n"
 "  <!-- to be used in place of the '[last_*]' keyword.                   -->\n"
 "\n"
 "  <send>\n"
@@ -2155,7 +2145,7 @@ char * default_scenario [] = {
 "      INVITE sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag02[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>\n"
+"      To: [service] <sip:[service]@[remote_ip]:[remote_port]>\n"
 "      Call-ID: [call_id]\n"
 "      CSeq: 1 INVITE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
@@ -2232,7 +2222,7 @@ char * default_scenario [] = {
 "      ACK sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag02[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      To: [service] <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
 "      Call-ID: [call_id]\n"
 "      CSeq: 1 ACK\n"
 "      retrievedIp: [$1]\n"
@@ -2259,7 +2249,7 @@ char * default_scenario [] = {
 "      BYE sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag02[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      To: [service] <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
 "      Call-ID: [call_id]\n"
 "      CSeq: 2 BYE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
@@ -2328,7 +2318,7 @@ char * default_scenario [] = {
 "      INVITE sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag03[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>\n"
+"      To: [service] <sip:[service]@[remote_ip]:[remote_port]>\n"
 "      Call-ID: [call_id]\n"
 "      CSeq: 1 INVITE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
@@ -2373,7 +2363,7 @@ char * default_scenario [] = {
 "      ACK sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag03[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      To: [service] <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
 "      Call-ID: [call_id]\n"
 "      CSeq: 1 ACK\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
@@ -2393,7 +2383,7 @@ char * default_scenario [] = {
 "      BYE sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag03[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      To: [service] <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
 "      Call-ID: [call_id]\n"
 "      CSeq: 2 BYE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
@@ -2465,7 +2455,7 @@ char * default_scenario [] = {
 "      INVITE sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag04[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>\n"
+"      To: [service] <sip:[service]@[remote_ip]:[remote_port]>\n"
 "      Call-ID: [call_id]\n"
 "      CSeq: 1 INVITE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
@@ -2494,7 +2484,7 @@ char * default_scenario [] = {
 "      ACK sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag04[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      To: [service] <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
 "      Call-ID: [call_id]\n"
 "      CSeq: 1 ACK\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
@@ -2523,7 +2513,7 @@ char * default_scenario [] = {
 "      BYE sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag04[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      To: [service] <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
 "      Call-ID: [call_id]\n"
 "      CSeq: 2 BYE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
@@ -3083,7 +3073,7 @@ char * default_scenario [] = {
 "      INVITE sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag09[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>\n"
+"      To: [service] <sip:[service]@[remote_ip]:[remote_port]>\n"
 "      Call-ID: [call_id]\n"
 "      CSeq: 1 INVITE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
@@ -3125,7 +3115,7 @@ char * default_scenario [] = {
 "      ACK sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag09[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      To: [service] <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
 "      Call-ID: [call_id]\n"
 "      CSeq: 1 ACK\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
@@ -3163,7 +3153,7 @@ char * default_scenario [] = {
 "      BYE sip:[service]@[remote_ip]:[remote_port] SIP/2.0\n"
 "      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]\n"
 "      From: sipp <sip:sipp@[local_ip]:[local_port]>;tag=[pid]SIPpTag09[call_number]\n"
-"      To: sut <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
+"      To: [service] <sip:[service]@[remote_ip]:[remote_port]>[peer_tag_param]\n"
 "      Call-ID: [call_id]\n"
 "      CSeq: 2 BYE\n"
 "      Contact: sip:sipp@[local_ip]:[local_port]\n"
@@ -3235,4 +3225,37 @@ char * default_scenario [] = {
 "  <CallLengthRepartition value=\"10, 50, 100, 500, 1000, 5000, 10000\"/>\n"
 "\n"
 "</scenario>\n",
+"<?xml version=\"1.0\" encoding=\"ISO-8859-1\" ?>\n"
+"<!DOCTYPE scenario SYSTEM \"sipp.dtd\">\n"
+"\n"
+"<!-- This program is free software; you can redistribute it and/or      -->\n"
+"<!-- modify it under the terms of the GNU General Public License as     -->\n"
+"<!-- published by the Free Software Foundation; either version 2 of the -->\n"
+"<!-- License, or (at your option) any later version.                    -->\n"
+"<!--                                                                    -->\n"
+"<!-- This program is distributed in the hope that it will be useful,    -->\n"
+"<!-- but WITHOUT ANY WARRANTY; without even the implied warranty of     -->\n"
+"<!-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the      -->\n"
+"<!-- GNU General Public License for more details.                       -->\n"
+"<!--                                                                    -->\n"
+"<!-- You should have received a copy of the GNU General Public License  -->\n"
+"<!-- along with this program; if not, write to the                      -->\n"
+"<!-- Free Software Foundation, Inc.,                                    -->\n"
+"<!-- 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA             -->\n"
+"<!--                                                                    -->\n"
+"<!--                 Sipp default 'uas' scenario.                       -->\n"
+"<!--                                                                    -->\n"
+"\n"
+"<scenario name=\"Out-of-call UAS\">\n"
+"  <recv request=\"DUMMY\" />\n"
+"\n"
+"  <!-- definition of the response time repartition table (unit is ms)   -->\n"
+"  <ResponseTimeRepartition value=\"10, 20, 30, 40, 50, 100, 150, 200\"/>\n"
+"\n"
+"  <!-- definition of the call length repartition table (unit is ms)     -->\n"
+"  <CallLengthRepartition value=\"10, 50, 100, 500, 1000, 5000, 10000\"/>\n"
+"\n"
+"</scenario>\n",
+
+
 };

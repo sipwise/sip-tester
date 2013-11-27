@@ -74,10 +74,8 @@ public:
   /* should collect route set? */
   bool           bShouldRecordRoutes;
 
-#ifdef _USE_OPENSSL
   /* should collect authentication info? */
   bool           bShouldAuthenticate;
-#endif
 
   /* If this is a send */
   SendingMessage *send_scheme;
@@ -224,6 +222,7 @@ private:
 /* There are external variable containing the current scenario */
 extern scenario      *main_scenario;
 extern scenario      *ooc_scenario;
+extern scenario      *aa_scenario;
 extern scenario      *display_scenario;
 extern int           creationMode;
 extern int           sendMode;
@@ -253,7 +252,7 @@ void freeStringTable(char ** stringList, int sizeOfList);
 
 
 int find_scenario(const char *scenario);
-extern char * default_scenario[11];
+extern char * default_scenario[12];
 
 /* Useful utility functions for parsing integers, etc. */
 long get_long(const char *ptr, const char *what);
