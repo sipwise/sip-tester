@@ -1,7 +1,7 @@
 
 --- a/Makefile
 +++ b/Makefile
-@@ -85,7 +85,7 @@ CPP_Darwin=g++  
+@@ -86,7 +86,7 @@
  CPP=$(CPP_$(SYSTEM))
  
  #Model specific flags

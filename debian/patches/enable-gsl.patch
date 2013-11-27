@@ -22,7 +22,7 @@
  
  /************************ Class Constructor *************************/
  
-@@ -1115,7 +1113,6 @@ CSample *parse_distribution(bool oldstyl
+@@ -1108,7 +1106,6 @@
      double min = xp_get_double("min", "Uniform distribution");
      double max = xp_get_double("max", "Uniform distribution");
      distribution = new CUniform(min, max);
@@ -30,7 +30,7 @@
    } else if (!strcmp(distname, "normal")) {
      double mean = xp_get_double("mean", "Normal distribution");
      double stdev = xp_get_double("stdev", "Normal distribution");
-@@ -1148,16 +1145,6 @@ CSample *parse_distribution(bool oldstyl
+@@ -1141,16 +1138,6 @@
      double n = xp_get_double("n", "Negative Binomial distribution");
      double p = xp_get_double("p", "Negative Binomial distribution");
      distribution = new CNegBin(n, p);
@@ -61,7 +61,7 @@
  
  /*
  ** Local definitions (macros)
-@@ -1862,7 +1860,6 @@ double CUniform::cdfInv(double percentil
+@@ -1862,7 +1860,6 @@
    return min + (max * percentile);
  }
  
@@ -69,7 +69,7 @@
  gsl_rng *gsl_init() {
    static gsl_rng *rng = NULL;
  
-@@ -2101,6 +2098,5 @@ int CNegBin::timeDescr(char *s, int len)
+@@ -2101,6 +2098,5 @@
  double CNegBin::cdfInv(double percentile) {
    return 0;
  }
@@ -90,7 +90,7 @@
  
  #include "variables.hpp"
  
-@@ -629,7 +627,6 @@ private:
+@@ -629,7 +627,6 @@
  	double min, max;
  };
  
@@ -98,7 +98,7 @@
  /* Normal distribution. */
  class CNormal : public CSample {
  public:
-@@ -731,6 +728,5 @@ protected:
+@@ -731,6 +728,5 @@
  	double p, n;
  	gsl_rng *rng;
  };

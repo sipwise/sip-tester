@@ -1,7 +1,7 @@
 
 --- a/sipp.hpp
 +++ b/sipp.hpp
-@@ -582,7 +582,7 @@ void sipp_close_socket(struct sipp_socke
+@@ -605,7 +605,7 @@
  #define WS_BUFFER 2 /* Buffer the message if there is no room for writing the message. */
  
  
