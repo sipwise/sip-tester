@@ -1,0 +1,104 @@
+--- a/scenario.cpp
++++ b/scenario.cpp
+@@ -808,11 +808,13 @@
+ 	    break ;
+ 	}
+ 
++    /*
+ 	if((msg[strlen(msg) - 1] != '\n') && (removed_clrf)) {
+ 	  strcat(msg, "\n");
+ 	}
+ 	char *tsrc = msg;
+ 	while(*tsrc++);
++    */
+ 	curmsg -> send_scheme = new SendingMessage(this, msg);
+ 	free(msg);
+ 
+--- a/call.hpp
++++ b/call.hpp
+@@ -64,6 +64,17 @@
+   int ackIndex;
+ };
+ 
++struct fileData {
++	char * name;
++	char * data;
++	size_t size;
++    ~fileData() 
++    { 
++        delete[] name;
++        delete[] data;
++    }
++};
++
+ class call : virtual public task, virtual public listener, public virtual socketowner {
+ public:
+   /* These are wrappers for various circumstances, (private) init does the real work. */
+@@ -312,6 +323,8 @@
+   void queue_up(char *msg);
+   char *queued_msg;
+ 
++  const fileData * readFile(char * filename);
++
+ 
+ #ifdef _USE_OPENSSL
+   SSL_CTX   *m_ctx_ssl ;
+--- a/call.cpp
++++ b/call.cpp
+@@ -2351,19 +2351,18 @@
+       case E_Message_File: {
+         char buffer[MAX_HEADER_LEN];
+ 	createSendingMessage(comp->comp_param.filename, -2, buffer, sizeof(buffer));
+-	FILE *f = fopen(buffer, "r");
+-	if (!f) {
+-	  ERROR("Could not open '%s': %s\n", buffer, strerror(errno));
+-	}
+-	int ret;
+-	while ((ret = fread(dest, 1, left, f)) > 0) {
+-		left -= ret;
+-		dest += ret;
+-	}
+-	if (ret < 0) {
+-	  ERROR("Error reading '%s': %s\n", buffer, strerror(errno));
++	const fileData * file = readFile(buffer);
++    if (file->size > 0) {
++        if (*dest == '\0') { // remove all trailing spaces at the end of headers
++            dest--;
++            while (*dest == '\x20')
++                dest--;
++            dest++;
++        }
++        memcpy(dest, file->data, file->size); // append file data at the end
++        dest += file->size;
+ 	}
+-	fclose(f);
++    delete file;
+ 	break;
+       }
+       case E_Message_Injection: {
+@@ -4114,3 +4113,25 @@
+   return NULL;
+ }
+ #endif
++
++const fileData * call::readFile(char * filename)
++{
++    fileData * file = new fileData;
++    file->name = strdup(filename);
++    FILE * fd = fopen(filename, "rb");
++    fseek(fd, 0, SEEK_END);
++    file->size = ftell(fd);
++    fseek(fd, 0, SEEK_SET);
++    if (fd) {
++        file->data = new char[file->size];
++        size_t bread = fread(file->data, 1, file->size, fd);
++        if (bread != file->size) {
++            ERROR("File %s was not read properly read %d fsize %d", 
++                  filename, bread, file->size);
++        }
++        fclose(fd);
++    } else {
++        ERROR("Unable to open data file %s %s", filename, strerror(errno));
++    }
++    return file;
++}
