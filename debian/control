@@ -1,8 +1,7 @@
 Source: sip-tester
 Section: comm
 Priority: optional
-Maintainer: Debian VoIP Team <pkg-voip-maintainers@lists.alioth.debian.org>
-Uploaders: Mark Purcell <msp@debian.org>, ARAKI Yasuhiro <ar@debian.org>, Tzafrir Cohen <tzafrir@debian.org>
+Maintainer: Sipwise Development Team <support@sipwise.com>
 Build-Depends: debhelper (>= 7.0.50~),
  pkg-config,
  libncurses5-dev,
