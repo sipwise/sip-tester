@@ -1,3 +1,12 @@
+sip-tester (1:3.3-1~bpo70+1+0~mr4.1.0.0) unstable; urgency=low
+
+  [ Alexander Lutay ]
+  * [8b4a206] MT#7505 Add .gitreview file for sip-tester
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 13 Jul 2015 15:37:18 +0200
+
 sip-tester (1:3.3-1~bpo70+1+0~mr4.0.0.0) unstable; urgency=low
 
   * New release.
