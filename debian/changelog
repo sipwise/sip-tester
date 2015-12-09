@@ -1,62 +1,17 @@
-sip-tester (1:3.3-1~bpo70+1+0~mr4.1.0.0) unstable; urgency=low
+sip-tester (1:3.3-1~bpo8+1) jessie-backports; urgency=medium
+
+  [ Victor Seva ]
+  * [b294509] MT#6517 unify Debian Packaging
+  * Rebuild for jessie-backports.
+
+  [ Michael Prokop ]
+  * [c9a7b26] Drop .svn files from repos
+  * [acb6110] MT#9127 Bump Standards-Version to 3.9.6
 
   [ Alexander Lutay ]
   * [8b4a206] MT#7505 Add .gitreview file for sip-tester
 
-  [ Sipwise Jenkins Builder ]
-
- -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 13 Jul 2015 15:37:18 +0200
-
-sip-tester (1:3.3-1~bpo70+1+0~mr4.0.0.0) unstable; urgency=low
-
-  * New release.
-
- -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Wed, 18 Mar 2015 14:17:45 +0100
-
-sip-tester (1:3.3-1~bpo70+1+0~mr3.8.0.0) unstable; urgency=low
-
-  [ Michael Prokop ]
-  * [acb6110] MT#9127 Bump Standards-Version to 3.9.6
-
-  [ Sipwise Jenkins Builder ]
-
- -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Wed, 07 Jan 2015 21:41:23 +0100
-
-sip-tester (1:3.3-1~bpo70+1+0~mr3.7.0.0) unstable; urgency=low
-
-  * New release.
-
- -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 30 Oct 2014 17:32:11 +0100
-
-sip-tester (1:3.3-1~bpo70+1+0~mr3.6.0.0) unstable; urgency=low
-
-  * New release.
-
- -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 09 Oct 2014 16:56:30 +0200
-
-sip-tester (1:3.3-1~bpo70+1+0~mr3.5.0.0) unstable; urgency=low
-
-  * New release.
-
- -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 10 Jul 2014 15:38:57 +0200
-
-sip-tester (1:3.3-1~bpo70+1+0~mr3.4.0.0) unstable; urgency=low
-
-  [ Victor Seva ]
-  * [b294509] MT#6517 unify Debian Packaging
-
-  [ Sipwise Jenkins Builder ]
-
- -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 26 May 2014 16:02:56 +0200
-
-sip-tester (1:3.3-1~bpo70+1+0~mr3.3) unstable; urgency=low
-
-  [ Michael Prokop ]
-  * [c9a7b26] Drop .svn files from repos
-
-  [ Sipwise Jenkins Builder ]
-
- -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Sat, 01 Feb 2014 19:59:00 +0100
+ -- Victor Seva <vseva@sipwise.com>  Wed, 09 Dec 2015 12:20:19 +0100
 
 sip-tester (1:3.3-1~bpo70+1) wheezy-backports; urgency=low
 
